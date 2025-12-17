@@ -1,0 +1,276 @@
+import os
+import asyncio
+from aiogram import Bot, Dispatcher, F
+from aiogram.types import (
+    Message,
+    CallbackQuery,
+    InlineKeyboardMarkup,
+    InlineKeyboardButton,
+    InputMediaPhoto
+)
+from aiogram.filters import CommandStart
+from aiogram.client.default import DefaultBotProperties
+
+# =======================
+# НАСТРОЙКИ
+# =======================
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+if not BOT_TOKEN:
+    raise RuntimeError("Не задан BOT_TOKEN")
+
+bot = Bot(
+    token=BOT_TOKEN,
+    default=DefaultBotProperties(parse_mode="HTML")
+)
+dp = Dispatcher()
+
+# =======================
+# ФОТО (URL-ЗАГЛУШКИ)
+# =======================
+PHOTO_Q1 = "https://example.com/q1.jpg"
+PHOTO_Q2 = "https://example.com/q2.jpg"
+PHOTO_Q3 = "https://example.com/q3.jpg"
+PHOTO_Q4 = "https://example.com/q4.jpg"
+PHOTO_Q5 = "https://example.com/q5.jpg"
+PHOTO_Q6 = "https://example.com/q6.jpg"
+PHOTO_Q7 = "https://example.com/q7.jpg"
+PHOTO_Q8 = "https://example.com/q8.jpg"
+PHOTO_Q9 = "https://example.com/q9.jpg"
+PHOTO_Q10 = "https://example.com/q10.jpg"
+
+PHOTO_RESULT = "https://example.com/result.jpg"
+
+QUESTION_PHOTOS = [
+    PHOTO_Q1,
+    PHOTO_Q2,
+    PHOTO_Q3,
+    PHOTO_Q4,
+    PHOTO_Q5,
+    PHOTO_Q6,
+    PHOTO_Q7,
+    PHOTO_Q8,
+    PHOTO_Q9,
+    PHOTO_Q10,
+]
+
+# =======================
+# ВОПРОСЫ (АДАПТАЦИЯ ПОД ДЕТЕЙ)
+# =======================
+QUESTIONS = [
+    {
+        "text": "🎄 В какой стране на Новый год любят шумно веселиться и запускать фейерверки?",
+        "answers": [
+            ("Китай", "fun"),
+            ("Норвегия", "family"),
+            ("Швейцария", "calm"),
+        ],
+    },
+    {
+        "text": "🎁 Где подарки на Новый год приносят Дед Мороз и Снегурочка?",
+        "answers": [
+            ("Россия", "family"),
+            ("Италия", "fun"),
+            ("Япония", "calm"),
+        ],
+    },
+    {
+        "text": "🎆 В какой стране Новый год часто встречают прямо на улице?",
+        "answers": [
+            ("США", "fun"),
+            ("Финляндия", "family"),
+            ("Австрия", "calm"),
+        ],
+    },
+    {
+        "text": "🍇 Где на Новый год загадывают желания и едят виноград?",
+        "answers": [
+            ("Испания", "fun"),
+            ("Швеция", "family"),
+            ("Канада", "calm"),
+        ],
+    },
+    {
+        "text": "🔔 В какой стране в Новый год звонят в колокола много раз?",
+        "answers": [
+            ("Япония", "calm"),
+            ("Бразилия", "fun"),
+            ("Франция", "family"),
+        ],
+    },
+    {
+        "text": "🎶 Где принято петь песни и ходить в гости?",
+        "answers": [
+            ("Англия", "fun"),
+            ("Исландия", "calm"),
+            ("Польша", "family"),
+        ],
+    },
+    {
+        "text": "🎄 Где Новый год — это прежде всего семейный праздник?",
+        "answers": [
+            ("Россия", "family"),
+            ("Австралия", "fun"),
+            ("Индия", "calm"),
+        ],
+    },
+    {
+        "text": "✨ Где на Новый год любят загадывать желания?",
+        "answers": [
+            ("Почти везде", "family"),
+            ("Только в Европе", "calm"),
+            ("Только в Азии", "fun"),
+        ],
+    },
+    {
+        "text": "🎊 В какой стране Новый год очень яркий и красочный?",
+        "answers": [
+            ("Бразилия", "fun"),
+            ("Чехия", "calm"),
+            ("Литва", "family"),
+        ],
+    },
+    {
+        "text": "😊 Какой Новый год тебе больше нравится?",
+        "answers": [
+            ("Весёлый и шумный", "fun"),
+            ("Тёплый и семейный", "family"),
+            ("Спокойный и уютный", "calm"),
+        ],
+    },
+]
+
+# =======================
+# РЕЗУЛЬТАТЫ
+# =======================
+RESULTS = {
+    "fun": {
+        "title": "🎉 Ты любишь весёлый Новый год",
+        "text": "Тебе нравятся праздники, игры, смех и яркие эмоции.",
+    },
+    "family": {
+        "title": "🎄 Ты любишь семейный Новый год",
+        "text": "Для тебя важно быть рядом с близкими и чувствовать уют.",
+    },
+    "calm": {
+        "title": "✨ Ты любишь спокойный Новый год",
+        "text": "Тебе нравится тишина, уют и хорошее настроение.",
+    },
+}
+
+# =======================
+# СОСТОЯНИЕ
+# =======================
+user_data = {}
+
+# =======================
+# КЛАВИАТУРЫ
+# =======================
+def start_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🚀 Начать тест", callback_data="start_test")]
+        ]
+    )
+
+def question_keyboard(index: int):
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [
+                InlineKeyboardButton(
+                    text=answer[0],
+                    callback_data=f"answer:{index}:{answer[1]}"
+                )
+            ]
+            for answer in QUESTIONS[index]["answers"]
+        ]
+    )
+
+def restart_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[
+            [InlineKeyboardButton(text="🔁 Пройти ещё раз", callback_data="start_test")]
+        ]
+    )
+
+# =======================
+# ХЕНДЛЕРЫ
+# =======================
+@dp.message(CommandStart())
+async def start(message: Message):
+    text = (
+        "👋 Привет!\n\n"
+        "Здесь тебя ждёт небольшой новогодний тест.\n"
+        "Отвечай на вопросы и узнай, "
+        "какой у тебя новогодний стиль 🎄"
+    )
+    await message.answer(text, reply_markup=start_keyboard())
+
+@dp.callback_query(F.data == "start_test")
+async def start_test(call: CallbackQuery):
+    user_data[call.from_user.id] = {
+        "index": 0,
+        "score": {"fun": 0, "family": 0, "calm": 0},
+    }
+
+    q = QUESTIONS[0]
+
+    await call.message.answer_photo(
+        photo=QUESTION_PHOTOS[0],
+        caption=f"<b>{q['text']}</b>",
+        reply_markup=question_keyboard(0)
+    )
+    await call.answer()
+
+@dp.callback_query(F.data.startswith("answer"))
+async def process_answer(call: CallbackQuery):
+    _, index, category = call.data.split(":")
+    index = int(index)
+
+    data = user_data[call.from_user.id]
+    data["score"][category] += 1
+    data["index"] += 1
+
+    if data["index"] >= len(QUESTIONS):
+        await show_result(call)
+        return
+
+    next_index = data["index"]
+    q = QUESTIONS[next_index]
+
+    await call.message.edit_media(
+        media=InputMediaPhoto(
+            media=QUESTION_PHOTOS[next_index],
+            caption=f"<b>{q['text']}</b>"
+        ),
+        reply_markup=question_keyboard(next_index)
+    )
+    await call.answer()
+
+async def show_result(call: CallbackQuery):
+    score = user_data[call.from_user.id]["score"]
+    result_key = max(score, key=score.get)
+    result = RESULTS[result_key]
+
+    text = (
+        f"<b>{result['title']}</b>\n\n"
+        f"{result['text']}\n\n"
+        "🎁 Спасибо за участие!"
+    )
+
+    await call.message.edit_media(
+        media=InputMediaPhoto(
+            media=PHOTO_RESULT,
+            caption=text
+        ),
+        reply_markup=restart_keyboard()
+    )
+    await call.answer()
+
+# =======================
+# ЗАПУСК
+# =======================
+async def main():
+    await dp.start_polling(bot)
+
+if __name__ == "__main__":
+    asyncio.run(main())

@@ -27,18 +27,18 @@ dp = Dispatcher()
 # =======================
 # ФОТО (URL-ЗАГЛУШКИ)
 # =======================
-PHOTO_Q1 = "https://example.com/q1.jpg"
-PHOTO_Q2 = "https://example.com/q2.jpg"
-PHOTO_Q3 = "https://example.com/q3.jpg"
-PHOTO_Q4 = "https://example.com/q4.jpg"
-PHOTO_Q5 = "https://example.com/q5.jpg"
-PHOTO_Q6 = "https://example.com/q6.jpg"
-PHOTO_Q7 = "https://example.com/q7.jpg"
-PHOTO_Q8 = "https://example.com/q8.jpg"
-PHOTO_Q9 = "https://example.com/q9.jpg"
-PHOTO_Q10 = "https://example.com/q10.jpg"
+PHOTO_Q1 = "https://img.freepik.com/premium-photo/traditional-new-year-celebration-china-happy-smile-fireworks-dance_991182-17112.jpg?semt=ais_items_boosted&w=740"
+PHOTO_Q2 = "https://cs2.livemaster.ru/storage/d5/4b/bcfa0d2d43ea743e175ba2847dts--odezhda-para-ded-moroz-i-snegurochka.jpg"
+PHOTO_Q3 = "https://img.freepik.com/premium-photo/girl-with-sparkler_1048944-5655681.jpg?semt=ais_hybrid&w=740"
+PHOTO_Q4 = "https://th-i.thgim.com/public/incoming/d86bqz/article69056997.ece/alternates/FREE_1200/Getty%20Images.jpg"
+PHOTO_Q5 = "https://ussa.su/storage/news/1502.jpg"
+PHOTO_Q6 = "https://cdn-image.zvuk.com/pic?type=release&id=35883079&size=large&hash=c11039fe-d029-426b-8322-26e39fe64c77"
+PHOTO_Q7 = "https://img.freepik.com/premium-vector/real-life-family-moments-vector-illustration-concepts_1253202-60787.jpg?semt=ais_hybrid&w=740"
+PHOTO_Q8 = "https://konstruktortestov.ru/files/5520/931d/f52d/4a59/3352/6efa/79e2/73a9/1995992051.jpg"
+PHOTO_Q9 = "https://cdn.culture.ru/images/d442f226-9d98-5edc-a0e0-24b176ec4b5d"
+PHOTO_Q10 = "https://www.mos.ru/upload/newsfeed/newsfeed/5D3_3945kopiya.JPG"
 
-PHOTO_RESULT = "https://example.com/result.jpg"
+PHOTO_RESULT = "https://s13.stc.all.kpcdn.net/family/wp-content/uploads/2023/12/photo-f-y-in-article-novogodnie-otkrytki-loshad-1024x1024-25-18.jpg"
 
 QUESTION_PHOTOS = [
     PHOTO_Q1,

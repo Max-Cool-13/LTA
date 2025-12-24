@@ -1,275 +1,282 @@
-import os
 import asyncio
+import os
+from collections import defaultdict
+
 from aiogram import Bot, Dispatcher, F
+from aiogram.filters import Command, CommandStart
 from aiogram.types import (
     Message,
     CallbackQuery,
     InlineKeyboardMarkup,
     InlineKeyboardButton,
-    InputMediaPhoto
+    InputMediaPhoto,
+    BotCommand,
 )
-from aiogram.filters import CommandStart
+from aiogram.fsm.state import StatesGroup, State
+from aiogram.fsm.context import FSMContext
+from aiogram.fsm.storage.memory import MemoryStorage
 from aiogram.client.default import DefaultBotProperties
+from dotenv import load_dotenv
 
-# =======================
-# НАСТРОЙКИ
-# =======================
+# -------------------- ENV --------------------
+load_dotenv()
 BOT_TOKEN = os.getenv("BOT_TOKEN")
-if not BOT_TOKEN:
-    raise RuntimeError("Не задан BOT_TOKEN")
 
+# -------------------- BOT --------------------
 bot = Bot(
     token=BOT_TOKEN,
-    default=DefaultBotProperties(parse_mode="HTML")
+    default=DefaultBotProperties(parse_mode="HTML"),
 )
-dp = Dispatcher()
+dp = Dispatcher(storage=MemoryStorage())
 
-# =======================
-# ФОТО (URL-ЗАГЛУШКИ)
-# =======================
-PHOTO_Q1 = "https://img.freepik.com/premium-photo/traditional-new-year-celebration-china-happy-smile-fireworks-dance_991182-17112.jpg?semt=ais_items_boosted&w=740"
-PHOTO_Q2 = "https://cs2.livemaster.ru/storage/d5/4b/bcfa0d2d43ea743e175ba2847dts--odezhda-para-ded-moroz-i-snegurochka.jpg"
-PHOTO_Q3 = "https://img.freepik.com/premium-photo/girl-with-sparkler_1048944-5655681.jpg?semt=ais_hybrid&w=740"
-PHOTO_Q4 = "https://th-i.thgim.com/public/incoming/d86bqz/article69056997.ece/alternates/FREE_1200/Getty%20Images.jpg"
-PHOTO_Q5 = "https://ussa.su/storage/news/1502.jpg"
-PHOTO_Q6 = "https://cdn-image.zvuk.com/pic?type=release&id=35883079&size=large&hash=c11039fe-d029-426b-8322-26e39fe64c77"
-PHOTO_Q7 = "https://img.freepik.com/premium-vector/real-life-family-moments-vector-illustration-concepts_1253202-60787.jpg?semt=ais_hybrid&w=740"
-PHOTO_Q8 = "https://konstruktortestov.ru/files/5520/931d/f52d/4a59/3352/6efa/79e2/73a9/1995992051.jpg"
-PHOTO_Q9 = "https://cdn.culture.ru/images/d442f226-9d98-5edc-a0e0-24b176ec4b5d"
-PHOTO_Q10 = "https://www.mos.ru/upload/newsfeed/newsfeed/5D3_3945kopiya.JPG"
+# -------------------- FSM --------------------
+class TestState(StatesGroup):
+    question = State()
 
-PHOTO_RESULT = "https://s13.stc.all.kpcdn.net/family/wp-content/uploads/2023/12/photo-f-y-in-article-novogodnie-otkrytki-loshad-1024x1024-25-18.jpg"
-
-QUESTION_PHOTOS = [
-    PHOTO_Q1,
-    PHOTO_Q2,
-    PHOTO_Q3,
-    PHOTO_Q4,
-    PHOTO_Q5,
-    PHOTO_Q6,
-    PHOTO_Q7,
-    PHOTO_Q8,
-    PHOTO_Q9,
-    PHOTO_Q10,
-]
-
-# =======================
-# ВОПРОСЫ (АДАПТАЦИЯ ПОД ДЕТЕЙ)
-# =======================
-QUESTIONS = [
-    {
-        "text": "🎄 В какой стране на Новый год любят шумно веселиться и запускать фейерверки?",
-        "answers": [
-            ("Китай", "fun"),
-            ("Норвегия", "family"),
-            ("Швейцария", "calm"),
-        ],
-    },
-    {
-        "text": "🎁 Где подарки на Новый год приносят Дед Мороз и Снегурочка?",
-        "answers": [
-            ("Россия", "family"),
-            ("Италия", "fun"),
-            ("Япония", "calm"),
-        ],
-    },
-    {
-        "text": "🎆 В какой стране Новый год часто встречают прямо на улице?",
-        "answers": [
-            ("США", "fun"),
-            ("Финляндия", "family"),
-            ("Австрия", "calm"),
-        ],
-    },
-    {
-        "text": "🍇 Где на Новый год загадывают желания и едят виноград?",
-        "answers": [
-            ("Испания", "fun"),
-            ("Швеция", "family"),
-            ("Канада", "calm"),
-        ],
-    },
-    {
-        "text": "🔔 В какой стране в Новый год звонят в колокола много раз?",
-        "answers": [
-            ("Япония", "calm"),
-            ("Бразилия", "fun"),
-            ("Франция", "family"),
-        ],
-    },
-    {
-        "text": "🎶 Где принято петь песни и ходить в гости?",
-        "answers": [
-            ("Англия", "fun"),
-            ("Исландия", "calm"),
-            ("Польша", "family"),
-        ],
-    },
-    {
-        "text": "🎄 Где Новый год — это прежде всего семейный праздник?",
-        "answers": [
-            ("Россия", "family"),
-            ("Австралия", "fun"),
-            ("Индия", "calm"),
-        ],
-    },
-    {
-        "text": "✨ Где на Новый год любят загадывать желания?",
-        "answers": [
-            ("Почти везде", "family"),
-            ("Только в Европе", "calm"),
-            ("Только в Азии", "fun"),
-        ],
-    },
-    {
-        "text": "🎊 В какой стране Новый год очень яркий и красочный?",
-        "answers": [
-            ("Бразилия", "fun"),
-            ("Чехия", "calm"),
-            ("Литва", "family"),
-        ],
-    },
-    {
-        "text": "😊 Какой Новый год тебе больше нравится?",
-        "answers": [
-            ("Весёлый и шумный", "fun"),
-            ("Тёплый и семейный", "family"),
-            ("Спокойный и уютный", "calm"),
-        ],
-    },
-]
-
-# =======================
-# РЕЗУЛЬТАТЫ
-# =======================
+# -------------------- RESULTS (8) --------------------
 RESULTS = {
-    "fun": {
-        "title": "🎉 Ты любишь весёлый Новый год",
-        "text": "Тебе нравятся праздники, игры, смех и яркие эмоции.",
+    "tree": {
+        "photo": "https://i.pinimg.com/originals/23/ae/9c/23ae9c59ed0a347cd53796c0fef9055b.jpg",
+        "text": "🎄 <b>Ты — новогодняя ёлка</b>\nТы создаёшь атмосферу и объединяешь людей.",
     },
-    "family": {
-        "title": "🎄 Ты любишь семейный Новый год",
-        "text": "Для тебя важно быть рядом с близкими и чувствовать уют.",
+    "ginger": {
+        "photo": "https://i.ytimg.com/vi/KAxoF4dGaqA/maxresdefault.jpg",
+        "text": "🍪 <b>Ты — пряничный человечек</b>\nДобрый, уютный и весёлый.",
     },
-    "calm": {
-        "title": "✨ Ты любишь спокойный Новый год",
-        "text": "Тебе нравится тишина, уют и хорошее настроение.",
+    "costume": {
+        "photo": "https://cs9.pikabu.ru/post_img/2019/11/13/5/og_og_1573625446224520918.jpg",
+        "text": "🎭 <b>Ты — новогодний костюм</b>\nЯркий и запоминающийся.",
+    },
+    "candy": {
+        "photo": "https://img.freepik.com/premium-vector/christmas-candy-set_149267-80.jpg?semt=ais_hybrid&w=740",
+        "text": "🍭 <b>Ты — леденец</b>\nЭнергичный и позитивный.",
+    },
+    "snowflake": {
+        "photo": "https://tamtravel.ru/wp-content/uploads/2024/01/winter-ice-close-up-blue-frost-backgrounds-snow-generative-ai_188544-9128.jpg",
+        "text": "❄️ <b>Ты — снежинка</b>\nСпокойный и особенный.",
+    },
+    "toy": {
+        "photo": "https://img.joomcdn.net/d1960ad56ac3eae20d6cca80adedbf8022c51fc3_original.jpeg",
+        "text": "🎁 <b>Ты — ёлочная игрушка</b>\nУкрашаешь любой праздник.",
+    },
+    "firework": {
+        "photo": "https://avatars.mds.yandex.net/i?id=47b57ab9ad9a5bfa654adadc9a3133fc_l-5287068-images-thumbs&n=13",
+        "text": "🎆 <b>Ты — фейерверк</b>\nЯркий и взрывной.",
+    },
+    "gift": {
+        "photo": "https://content.img-gorod.ru/pim/products/images/ab/e6/018ed328-7fd1-7ab7-9eb1-31fde479abe6.jpg",
+        "text": "📦 <b>Ты — подарок</b>\nПолон сюрпризов.",
     },
 }
 
-# =======================
-# СОСТОЯНИЕ
-# =======================
-user_data = {}
+# -------------------- QUESTIONS (10) --------------------
+QUESTIONS = [
+    {
+        "photo": "https://img.freepik.com/premium-photo/christmas-tree-background_1071931-66229.jpg",
+        "text": "Что ты делаешь первым делом перед праздником?",
+        "answers": {
+            "Украшаю всё вокруг": "tree",
+            "Пеку сладости": "ginger",
+            "Придумываю образ": "costume",
+            "Жду подарки": "gift",
+        },
+    },
+    {
+        "photo": "https://img.freepik.com/premium-photo/snowman-with-christmas-tree-presents_409674-14473.jpg",
+        "text": "Какой ты в компании?",
+        "answers": {
+            "Объединяю всех": "tree",
+            "Добрый и тёплый": "ginger",
+            "Самый заметный": "firework",
+            "Весёлый": "candy",
+        },
+    },
+    {
+        "photo": "https://img.freepik.com/premium-photo/glowing-holiday-lights-transparent_87720-65524.jpg",
+        "text": "Что тебе ближе?",
+        "answers": {
+            "Традиции": "tree",
+            "Уют": "snowflake",
+            "Яркость": "firework",
+            "Сюрпризы": "gift",
+        },
+    },
+    {
+        "photo": "https://vologda-poisk.ru/system/Cover/images/000/048/496/big/novyy-god-rossiyanovyy-god-rossiya.jpg",
+        "text": "Какой подарок ты бы выбрал?",
+        "answers": {
+            "Красивый": "toy",
+            "Вкусный": "ginger",
+            "Необычный": "costume",
+            "Сладкий": "candy",
+        },
+    },
+    {
+        "photo": "https://s2.fotokto.ru/photo/full/248/2480900.jpg",
+        "text": "Твоя главная черта?",
+        "answers": {
+            "Надёжность": "tree",
+            "Доброта": "ginger",
+            "Креатив": "costume",
+            "Энергия": "firework",
+        },
+    },
+    {
+        "photo": "https://avatars.mds.yandex.net/i?id=2fb7a786af30b69760a6ecd7262e7ae4_l-4571839-images-thumbs&n=13",
+        "text": "Как проходит идеальный праздник?",
+        "answers": {
+            "Все вместе": "tree",
+            "Спокойно": "snowflake",
+            "Шумно": "firework",
+            "Весело": "candy",
+        },
+    },
+    {
+        "photo": "https://i.pinimg.com/originals/46/5c/5c/465c5c63b2990909348b5089c3fe84a6.png",
+        "text": "Что ты любишь больше?",
+        "answers": {
+            "Огоньки": "toy",
+            "Сладости": "candy",
+            "Наряды": "costume",
+            "Сюрпризы": "gift",
+        },
+    },
+    {
+        "photo": "https://cdn.culture.ru/images/e630fa35-22be-5fc8-9287-0196650bc976",
+        "text": "Как ты радуешь других?",
+        "answers": {
+            "Создаю атмосферу": "tree",
+            "Угощаю": "ginger",
+            "Удивляю": "firework",
+            "Дарю подарки": "gift",
+        },
+    },
+    {
+        "photo": "https://otkritkis.com/wp-content/uploads/2021/11/novogodnyaa-elka-dlya-detey-1.jpg",
+        "text": "Какой ты на празднике?",
+        "answers": {
+            "Центр внимания": "firework",
+            "Украшение": "toy",
+            "Душа компании": "candy",
+            "Спокойный": "snowflake",
+        },
+    },
+    {
+        "photo": "https://avatars.mds.yandex.net/i?id=94e51d6cf152c25e0a7c556445b395c3_l-8497316-images-thumbs&n=13",
+        "text": "Что для тебя Новый год?",
+        "answers": {
+            "Традиции": "tree",
+            "Чудо": "gift",
+            "Веселье": "candy",
+            "Красота": "toy",
+        },
+    },
+]
 
-# =======================
-# КЛАВИАТУРЫ
-# =======================
-def start_keyboard():
+# -------------------- KEYBOARDS --------------------
+def control_keyboard():
+    return InlineKeyboardMarkup(
+        inline_keyboard=[[
+            InlineKeyboardButton(text="🚀 Запуск", callback_data="start_test"),
+            InlineKeyboardButton(text="🔄 Перезапуск", callback_data="restart"),
+        ]]
+    )
+
+def answers_keyboard(answers: dict):
     return InlineKeyboardMarkup(
         inline_keyboard=[
-            [InlineKeyboardButton(text="🚀 Начать тест", callback_data="start_test")]
+            [InlineKeyboardButton(text=text, callback_data=key)]
+            for text, key in answers.items()
         ]
     )
 
-def question_keyboard(index: int):
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [
-                InlineKeyboardButton(
-                    text=answer[0],
-                    callback_data=f"answer:{index}:{answer[1]}"
-                )
-            ]
-            for answer in QUESTIONS[index]["answers"]
-        ]
-    )
-
-def restart_keyboard():
-    return InlineKeyboardMarkup(
-        inline_keyboard=[
-            [InlineKeyboardButton(text="🔁 Пройти ещё раз", callback_data="start_test")]
-        ]
-    )
-
-# =======================
-# ХЕНДЛЕРЫ
-# =======================
+# -------------------- HANDLERS --------------------
 @dp.message(CommandStart())
-async def start(message: Message):
-    text = (
-        "👋 Привет!\n\n"
-        "Здесь тебя ждёт небольшой новогодний тест.\n"
-        "Отвечай на вопросы и узнай, "
-        "какой у тебя новогодний стиль 🎄"
+async def start(message: Message, state: FSMContext):
+    await state.clear()
+    sent = await message.answer_photo(
+        photo=QUESTIONS[0]["photo"],
+        caption="🎄 <b>Новогодний тест</b>\n\nОтветь на вопросы и узнай,\nкакой ты новогодний символ!",
+        reply_markup=control_keyboard(),
     )
-    await message.answer(text, reply_markup=start_keyboard())
+    await state.update_data(msg_id=sent.message_id)
 
 @dp.callback_query(F.data == "start_test")
-async def start_test(call: CallbackQuery):
-    user_data[call.from_user.id] = {
-        "index": 0,
-        "score": {"fun": 0, "family": 0, "calm": 0},
-    }
+async def start_test(cb: CallbackQuery, state: FSMContext):
+    await state.set_state(TestState.question)
+    await state.update_data(step=0, scores=defaultdict(int))
+    await show_question(cb.message, state)
 
-    q = QUESTIONS[0]
+@dp.callback_query(F.data == "restart")
+async def restart(cb: CallbackQuery, state: FSMContext):
+    await start_test(cb, state)
 
-    await call.message.answer_photo(
-        photo=QUESTION_PHOTOS[0],
-        caption=f"<b>{q['text']}</b>",
-        reply_markup=question_keyboard(0)
-    )
-    await call.answer()
+@dp.callback_query(TestState.question)
+async def answer(cb: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    step = data["step"]
+    scores = data["scores"]
 
-@dp.callback_query(F.data.startswith("answer"))
-async def process_answer(call: CallbackQuery):
-    _, index, category = call.data.split(":")
-    index = int(index)
+    scores[cb.data] += 1
+    step += 1
 
-    data = user_data[call.from_user.id]
-    data["score"][category] += 1
-    data["index"] += 1
+    if step >= len(QUESTIONS):
+        result_key = max(scores, key=scores.get)
+        result = RESULTS[result_key]
 
-    if data["index"] >= len(QUESTIONS):
-        await show_result(call)
+        await bot.edit_message_media(
+            chat_id=cb.message.chat.id,
+            message_id=cb.message.message_id,
+            media=InputMediaPhoto(
+                media=result["photo"],
+                caption=result["text"],
+            ),
+            reply_markup=control_keyboard(),
+        )
+        await state.clear()
         return
 
-    next_index = data["index"]
-    q = QUESTIONS[next_index]
+    await state.update_data(step=step, scores=scores)
+    await show_question(cb.message, state)
 
-    await call.message.edit_media(
+async def show_question(message: Message, state: FSMContext):
+    data = await state.get_data()
+    step = data["step"]
+    q = QUESTIONS[step]
+
+    await bot.edit_message_media(
+        chat_id=message.chat.id,
+        message_id=message.message_id,
         media=InputMediaPhoto(
-            media=QUESTION_PHOTOS[next_index],
-            caption=f"<b>{q['text']}</b>"
+            media=q["photo"],
+            caption=f"<b>{step + 1} / {len(QUESTIONS)}</b>\n\n{q['text']}",
         ),
-        reply_markup=question_keyboard(next_index)
-    )
-    await call.answer()
-
-async def show_result(call: CallbackQuery):
-    score = user_data[call.from_user.id]["score"]
-    result_key = max(score, key=score.get)
-    result = RESULTS[result_key]
-
-    text = (
-        f"<b>{result['title']}</b>\n\n"
-        f"{result['text']}\n\n"
-        "🎁 Спасибо за участие!"
+        reply_markup=answers_keyboard(q["answers"]),
     )
 
-    await call.message.edit_media(
-        media=InputMediaPhoto(
-            media=PHOTO_RESULT,
-            caption=text
-        ),
-        reply_markup=restart_keyboard()
-    )
-    await call.answer()
+# -------------------- COMMANDS MENU --------------------
+async def set_bot_commands():
+    await bot.set_my_commands([
+        BotCommand(command="start", description="Запустить бота"),
+        BotCommand(command="menu", description="Главное меню"),
+        BotCommand(command="help", description="Помощь по боту"),
+    ])
 
-# =======================
-# ЗАПУСК
-# =======================
+@dp.message(Command("menu"))
+async def menu_cmd(message: Message):
+    await start(message, FSMContext)
+
+@dp.message(Command("help"))
+async def help_cmd(message: Message):
+    await message.answer(
+        "🎄 Это новогодний тест.\n"
+        "Отвечай на вопросы и узнай,\n"
+        "какой ты новогодний символ!"
+    )
+
+# -------------------- RUN --------------------
 async def main():
+    await set_bot_commands()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":
